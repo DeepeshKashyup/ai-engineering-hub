@@ -29,7 +29,6 @@ The MCP tool is designed to facilitate the execution of gcloud CLI commands in a
 ## folder structure
 ```
 gcp_mcp_server/
-├── Dockerfile
 ├── README.md
 ├── requirements.txt
 ├── main.py
@@ -46,17 +45,9 @@ gcp_mcp_server/
     └── gcp_models.py
 ```
 
-## Installation
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd gcp_mcp_server
-   ```
-2. Build the Docker image:
-   ```bash
-   docker build -t gcp_mcp_server .
-   ```
-3. Run the Docker container:
-   ```bash
-   docker run -it gcp_mcp_server
-   ```
+## Usage
+
+To start the server, run the following command:
+
+```bash
+python server.py
