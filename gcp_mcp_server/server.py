@@ -66,4 +66,4 @@ async def query_bigquery(query: str):
     results = query_job.result()
     return {"results": [dict(row) for row in results]}
 
-mcp.run(transport="http", host="localhost", port=8002)
+mcp.run(transport="http", host="localhost", port=8000)
