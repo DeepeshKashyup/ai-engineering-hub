@@ -1,0 +1,41 @@
+# Ignore credentials and sensitive files
+credentials/
+*.json
+.env
+.env.local
+.env.production
+
+# Ignore development files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
+.mypy_cache/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore Docker files
+Dockerfile
+docker-compose.yml
+*.dockerfile
+
+# Ignore documentation
+README.md
+docs/
+*.md
