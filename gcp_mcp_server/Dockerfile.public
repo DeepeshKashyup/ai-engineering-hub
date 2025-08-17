@@ -24,6 +24,7 @@ RUN uv venv && \
 # Copy application code (excluding credentials directory)
 COPY server.py ./
 COPY controller/ ./controller/
+COPY knowledge_base/ ./knowledge_base/
 
 # Create credentials directory with proper permissions
 RUN mkdir -p /app/credentials && \

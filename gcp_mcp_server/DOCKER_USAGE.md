@@ -1,10 +1,19 @@
 # GCP MCP Server Docker Image
 
-A Docker image for running a Model Context Protocol (MCP) server that provides BigQuery integration.
+A Docker image for running a Model Context Protocol (MCP) server that provides BigQuery integration with configurable knowledge base support.
+
+## Features
+
+- **BigQuery Integration**: Execute SQL queries against Google BigQuery
+- **Schema Context**: Intelligent schema understanding for better query generation
+- **Knowledge Base Support**: 
+  - Local knowledge base files (default)
+  - Google Cloud Storage bucket integration
+- **Secure Credential Handling**: Volume-mounted credentials (no embedded secrets)
 
 ## Quick Start
 
-### Option 1: Using Volume Mount (Recommended)
+### Option 1: Using Volume Mount with Local Knowledge Base (Recommended)
 
 1. **Prepare your GCP credentials file**:
    - Download your GCP service account key as JSON
@@ -19,7 +28,19 @@ A Docker image for running a Model Context Protocol (MCP) server that provides B
      gcp-mcp-server
    ```
 
-### Option 2: Using Environment Variables
+### Option 2: Using GCS Bucket for Knowledge Base
+
+1. **Set up with GCS bucket**:
+   ```bash
+   docker run -d \
+     -p 8000:8000 \
+     -v /path/to/your/gcp-credentials.json:/app/credentials/gcp-credentials.json:ro \
+     -e KNOWLEDGE_BASE_BUCKET=gs://your-bucket-name/path/to/knowledge-base \
+     --name my-gcp-mcp-server \
+     gcp-mcp-server
+   ```
+
+### Option 3: Using Environment Variables
 
 1. **Set the credentials path**:
    ```bash
@@ -62,6 +83,53 @@ docker-compose up -d
 |----------|-------------|---------|
 | `PORT` | Server port | `8000` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to GCP credentials | `/app/credentials/gcp-credentials.json` |
+| `KNOWLEDGE_BASE_BUCKET` | GCS bucket path for knowledge base (optional) | Not set (uses local files) |
+
+## Knowledge Base Configuration
+
+The server supports two modes for knowledge base management:
+
+### Local Knowledge Base (Default)
+The server looks for knowledge base files in the `knowledge_base/` directory:
+- `schema.json` - Database schema definitions
+- `sample_queries.json` - Example queries for AI guidance
+
+### GCS Bucket Knowledge Base
+Set the `KNOWLEDGE_BASE_BUCKET` environment variable to use a GCS bucket:
+```bash
+# Format: gs://bucket-name/path/to/knowledge-base
+KNOWLEDGE_BASE_BUCKET=gs://my-company-kb/bigquery-schemas
+
+# Or just the bucket name if files are in the root
+KNOWLEDGE_BASE_BUCKET=gs://my-knowledge-base
+```
+
+The server will look for the same JSON files in the specified GCS location.
+
+### Knowledge Base File Formats
+
+**schema.json example:**
+```json
+{
+  "users": {
+    "columns": ["id", "name", "email", "signup_date"],
+    "relationships": {
+      "orders": {"local_key": "id", "foreign_key": "user_id"}
+    },
+    "description": "User account information"
+  }
+}
+```
+
+**sample_queries.json example:**
+```json
+{
+  "user_analytics": [
+    "SELECT COUNT(*) FROM users WHERE signup_date >= '2024-01-01'",
+    "SELECT country, COUNT(*) as user_count FROM users GROUP BY country"
+  ]
+}
+```
 
 ## Available Endpoints
 

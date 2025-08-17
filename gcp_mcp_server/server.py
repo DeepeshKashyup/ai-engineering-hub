@@ -1,9 +1,12 @@
 from fastmcp import FastMCP
-from controller.schema_context import get_schema_context
+from controller.schema_context import get_schema_context, initialize_gcs_config
 from google.cloud import bigquery
+from google.cloud import storage
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import json
+from typing import Optional, List, Dict, Any
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,11 +19,27 @@ credentials_path = str(Path(credentials_path).resolve())
 # Set the credentials environment variable
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
+# Initialize knowledge base GCS configuration if bucket path is provided
+knowledge_base_bucket = os.getenv('KNOWLEDGE_BASE_BUCKET')
+if knowledge_base_bucket:
+    print(f"Initializing knowledge base from GCS bucket: {knowledge_base_bucket}")
+    initialize_gcs_config(knowledge_base_bucket)
+else:
+    print("Using local knowledge base directory")
+
 # Initialize BigQuery client
 try:
     bq_client = bigquery.Client()
 except Exception as e:
     print(f"Error initializing BigQuery client: {e}")
+    print(f"Using credentials from: {credentials_path}")
+    raise
+
+# Initialize Google Cloud Storage client
+try:
+    gcs_client = storage.Client()
+except Exception as e:
+    print(f"Error initializing GCS client: {e}")
     print(f"Using credentials from: {credentials_path}")
     raise
 
