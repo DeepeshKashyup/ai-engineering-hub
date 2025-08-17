@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     UV_VERSION=0.1.12 \
-    PORT=8001
+    PORT=8000
 
 # Install uv
 RUN pip install --no-cache-dir uv==${UV_VERSION}
