@@ -8,12 +8,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount your GCP credentials file here
-      # Replace ./gcp-credentials.json with the path to your credentials file
-      - ./gcp-credentials.json:/app/credentials/gcp-credentials.json:ro
+      # Mount the specific file, not the directory
+      - ./credentials/gcp-practitioner.json:/app/credentials/gcp-practitioner.json:ro
+      - ./knowledge_base:/app/knowledge_base:ro
     environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-practitioner.json
+      - KNOWLEDGE_BASE_BUCKET=gs://my-mcp-server-libs/kb-files/thelook_ecommerce
       - PORT=8000
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-credentials.json
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/mcp"]
       interval: 30s

@@ -1,0 +1,6 @@
+DSPy
+FastMcp
+pandas
+sqlalchemy
+numpy
+pytest

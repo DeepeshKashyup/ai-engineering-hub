@@ -19,33 +19,52 @@ def initialize_gcs_config(bucket_path: Optional[str] = None):
             print(f"Error initializing GCS client for knowledge base: {e}")
             gcs_client = None
 
-# Default schema data (fallback)
-default_schema = {
-    'users': {
-        'columns': ['id', 'name', 'signup_date'],
-        'relationships': {
-            'orders': {'local_key': 'id', 'foreign_key': 'user_id'}
+# Default database context (fallback)
+default_database_context = {
+    "tables": {
+        "users": {
+            "columns": [
+                {"name": "id", "type": "INTEGER", "description": "Primary key"},
+                {"name": "name", "type": "STRING", "description": "User full name"},
+                {"name": "signup_date", "type": "DATE", "description": "Account creation date"}
+            ],
+            "relationships": {
+                "orders": {"local_key": "id", "foreign_key": "user_id"}
+            },
+            "sample_data": [
+                {"id": 1, "name": "John Doe", "signup_date": "2024-01-15"},
+                {"id": 2, "name": "Jane Smith", "signup_date": "2024-02-20"}
+            ]
+        },
+        "orders": {
+            "columns": [
+                {"name": "order_id", "type": "INTEGER", "description": "Primary key"},
+                {"name": "user_id", "type": "INTEGER", "description": "Foreign key to users"},
+                {"name": "amount", "type": "DECIMAL", "description": "Order amount"},
+                {"name": "created_at", "type": "TIMESTAMP", "description": "Creation time"}
+            ],
+            "relationships": {
+                "users": {"local_key": "user_id", "foreign_key": "id"}
+            },
+            "sample_data": [
+                {"order_id": 101, "user_id": 1, "amount": 150.00, "created_at": "2024-03-01T10:30:00Z"},
+                {"order_id": 102, "user_id": 2, "amount": 75.50, "created_at": "2024-03-02T14:15:00Z"}
+            ]
         }
     },
-    'orders': {
-        'columns': ['order_id', 'user_id', 'amount', 'created_at'],
-        'relationships': {
-            'users': {'local_key': 'user_id', 'foreign_key': 'id'}
+    "sample_queries": {
+        "user_orders": {
+            "description": "Get user order counts",
+            "sql": "SELECT u.name, COUNT(o.order_id) FROM users u JOIN orders o ON u.id = o.user_id GROUP BY u.name"
         }
     }
 }
 
-default_sample_queries = {
-    'users_orders_join': [
-        "SELECT u.name, COUNT(o.order_id) FROM users u JOIN orders o ON u.id = o.user_id GROUP BY u.name",
-        "SELECT o.order_id, o.amount, u.name FROM orders o JOIN users u ON o.user_id = u.id WHERE o.amount > 100"
-    ]
-}
 
 def load_knowledge_base_from_local(knowledge_base_dir: str = "knowledge_base") -> Dict[str, Any]:
-    """Load knowledge base files from local directory."""
-    schema_data = {}
-    sample_queries_data = {}
+    """Load knowledge base files from local Json file."""
+    #schema_data = {}
+    #sample_queries_data = {}
     
     try:
         # Get absolute path to knowledge base directory
@@ -57,42 +76,28 @@ def load_knowledge_base_from_local(knowledge_base_dir: str = "knowledge_base") -
         
         if not kb_path.exists():
             print(f"Knowledge base directory not found: {kb_path}")
-            return {"schema": default_schema, "sample_queries": default_sample_queries}
+            #return {"schema": default_schema, "sample_queries": default_sample_queries}
+            return default_database_context
         
-        # Load schema files
-        schema_file = kb_path / "schema.json"
-        if schema_file.exists():
-            with open(schema_file, 'r') as f:
-                schema_data = json.load(f)
-        
-        # Load sample queries files
-        queries_file = kb_path / "sample_queries.json"
-        if queries_file.exists():
-            with open(queries_file, 'r') as f:
-                sample_queries_data = json.load(f)
-        
-        # Use default data if files are empty or missing
-        if not schema_data:
-            schema_data = default_schema
-        if not sample_queries_data:
-            sample_queries_data = default_sample_queries
+        # Load unified database context file
+        context_file = kb_path / "database_context.json"
+        if context_file.exists():
+            with open(context_file, 'r') as f:
+                return json.load(f)
+        else:
+            print(f"Database context file not found: {context_file}")
+            return default_database_context
             
     except Exception as e:
-        print(f"Error loading local knowledge base: {e}")
-        schema_data = default_schema
-        sample_queries_data = default_sample_queries
-    
-    return {"schema": schema_data, "sample_queries": sample_queries_data}
+        print(f"Error loading local database base: {e}")
+        return default_database_context
 
 def load_knowledge_base_from_gcs() -> Dict[str, Any]:
     """Load knowledge base files from GCS bucket."""
     if not gcs_client or not gcs_bucket_path:
         print("GCS client or bucket path not configured")
-        return {"schema": default_schema, "sample_queries": default_sample_queries}
-    
-    schema_data = {}
-    sample_queries_data = {}
-    
+        return default_database_context
+
     try:
         # Parse bucket path (format: gs://bucket-name/path/to/knowledge_base or bucket-name/path)
         bucket_path_clean = gcs_bucket_path.replace('gs://', '')
@@ -102,60 +107,70 @@ def load_knowledge_base_from_gcs() -> Dict[str, Any]:
         
         bucket = gcs_client.bucket(bucket_name)
         
-        # Load schema from GCS
-        schema_blob_name = f"{prefix}/schema.json" if prefix else "schema.json"
-        schema_blob = bucket.blob(schema_blob_name)
-        if schema_blob.exists():
-            schema_content = schema_blob.download_as_text()
-            schema_data = json.loads(schema_content)
-        
-        # Load sample queries from GCS
-        queries_blob_name = f"{prefix}/sample_queries.json" if prefix else "sample_queries.json"
-        queries_blob = bucket.blob(queries_blob_name)
-        if queries_blob.exists():
-            queries_content = queries_blob.download_as_text()
-            sample_queries_data = json.loads(queries_content)
-        
-        # Use default data if files are empty or missing
-        if not schema_data:
-            schema_data = default_schema
-        if not sample_queries_data:
-            sample_queries_data = default_sample_queries
-            
+        # Load unified database context from GCS
+        context_blob_name = f"{prefix}/database_context.json" if prefix else "database_context.json"
+        context_blob = bucket.blob(context_blob_name)
+
+        if context_blob.exists():
+            context_content = context_blob.download_as_text()
+            return json.loads(context_content)
+        else:
+            print(f"Database context file not found in GCS: {context_blob_name}")
+            return default_database_context
+
     except Exception as e:
         print(f"Error loading knowledge base from GCS: {e}")
-        schema_data = default_schema
-        sample_queries_data = default_sample_queries
+        return default_database_context
     
-    return {"schema": schema_data, "sample_queries": sample_queries_data}
-
 def get_schema_context():
-    """Get schema context from knowledge base (local or GCS) or fallback to default."""
-    # Try to load from GCS if configured, otherwise load from local
+    """Get comprehensive database context including schema, sample data, and queries."""
+    # Load from GCS if configured, otherwise load from local
     if gcs_bucket_path and gcs_client:
-        print(f"Loading knowledge base from GCS bucket: {gcs_bucket_path}")
-        knowledge_base = load_knowledge_base_from_gcs()
+        print(f"Loading database context from GCS bucket: {gcs_bucket_path}")
+        db_context = load_knowledge_base_from_gcs()
     else:
-        print("Loading knowledge base from local directory")
-        knowledge_base = load_knowledge_base_from_local()
+        print("Loading database context from local directory")
+        db_context = load_knowledge_base_from_local()
+
+    # Generate comprehensive context string
+    context_str = "DATABASE SCHEMA AND CONTEXT:\n\n"
     
-    schema = knowledge_base["schema"]
-    sample_queries = knowledge_base["sample_queries"]
+    # Tables section
+    context_str += "TABLES:\n"
+    for table_name, table_info in db_context.get("tables", {}).items():
+        context_str += f"\n{table_name.upper()}:\n"
+        context_str += "  Columns:\n"
+        
+        for col in table_info.get("columns", []):
+            if isinstance(col, dict):
+                desc = f" - {col.get('description', '')}" if col.get('description') else ""
+                context_str += f"    - {col['name']} ({col.get('type', 'UNKNOWN')}){desc}\n"
+            else:
+                context_str += f"    - {col}\n"
+        
+        # Relationships
+        if table_info.get("relationships"):
+            context_str += "  Relationships:\n"
+            for rel_table, rel_info in table_info["relationships"].items():
+                context_str += f"    - {table_name}.{rel_info['local_key']} = {rel_table}.{rel_info['foreign_key']}\n"
+        
+        # Sample data
+        if table_info.get("sample_data"):
+            context_str += "  Sample Data:\n"
+            for i, row in enumerate(table_info["sample_data"][:3]):  # Show max 3 rows
+                context_str += f"    Row {i+1}: {row}\n"
     
-    # Combine schema, relationships, and sample queries for the AI agent
-    context_str = "Tables:\n"
-    for tbl, info in schema.items():
-        context_str += f"- {tbl}: columns {info['columns']}\n"
-        if 'relationships' in info:
-            for rel_tbl, rel_info in info['relationships'].items():
-                context_str += f"  Relationship: {tbl}.{rel_info['local_key']} = {rel_tbl}.{rel_info['foreign_key']}\n"
-    
-    context_str += "\nSample queries:\n"
-    for k, queries in sample_queries.items():
-        if isinstance(queries, list):
-            for q in queries:
-                context_str += f"{q}\n"
+    # Sample queries section
+    context_str += "\nSAMPLE QUERIES:\n"
+    for query_name, query_info in db_context.get("sample_queries", {}).items():
+        if isinstance(query_info, dict):
+            desc = query_info.get("description", "")
+            sql = query_info.get("sql", "")
+            context_str += f"\n{query_name.upper()}:\n"
+            if desc:
+                context_str += f"  Description: {desc}\n"
+            context_str += f"  SQL: {sql}\n"
         else:
-            context_str += f"{queries}\n"
+            context_str += f"{query_name}: {query_info}\n"
     
     return context_str

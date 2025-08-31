@@ -211,3 +211,4 @@ __marimo__/
 credentials/
 *.json
 .env
+NLP-to-SQL-Agent/.env.example
