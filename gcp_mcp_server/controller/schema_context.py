@@ -133,12 +133,25 @@ def get_schema_context():
         db_context = load_knowledge_base_from_local()
 
     # Generate comprehensive context string
-    context_str = "DATABASE SCHEMA AND CONTEXT:\n\n"
+    context_str = "DATABASE SCHEMA CONTEXT:\n\n"
+    
+    # Add table mapping section
+    context_str += "TABLE MAPPING (Short Name -> Full BigQuery Table Name):\n"
+    for table_name, table_info in db_context.get("tables", {}).items():
+        full_name = table_info.get("full_table_name", table_name)
+        if full_name != table_name:
+            context_str += f"  {table_name} -> {full_name}\n"
+    context_str += "\n"
+    
+    context_str += "IMPORTANT: Always use the full BigQuery table names in your SQL queries!\n\n"
     
     # Tables section
     context_str += "TABLES:\n"
     for table_name, table_info in db_context.get("tables", {}).items():
-        context_str += f"\n{table_name.upper()}:\n"
+        # Use full table name if available, otherwise use simple table name
+        display_name = table_info.get("full_table_name", table_name)
+        context_str += f"\n{display_name.upper()}:\n"
+        context_str += f"  Table Name: {display_name}\n"
         context_str += "  Columns:\n"
         
         for col in table_info.get("columns", []):
@@ -152,7 +165,10 @@ def get_schema_context():
         if table_info.get("relationships"):
             context_str += "  Relationships:\n"
             for rel_table, rel_info in table_info["relationships"].items():
-                context_str += f"    - {table_name}.{rel_info['local_key']} = {rel_table}.{rel_info['foreign_key']}\n"
+                # Try to get full table name for relationship target
+                rel_table_info = db_context.get("tables", {}).get(rel_table, {})
+                rel_full_name = rel_table_info.get("full_table_name", rel_table)
+                context_str += f"    - {display_name}.{rel_info['local_key']} = {rel_full_name}.{rel_info['foreign_key']}\n"
         
         # Sample data
         if table_info.get("sample_data"):

@@ -15,8 +15,17 @@ class NL2SQLAgent(dspy.Module):
     
     def forward(self, user_query: str, schema_and_rules: Dict[str, Any]):
         schema_str = str(schema_and_rules)
+        
+        # Add explicit instructions to avoid markdown formatting
+        enhanced_query = f"""
+        {user_query}
+        
+        IMPORTANT: Return only plain SQL without any markdown formatting, code blocks, or backticks.
+        Use fully qualified table names like `bigquery-public-data.thelook_ecommerce.table_name`.
+        """
+        
         result = self.generator(
-            user_query=user_query,
+            user_query=enhanced_query,
             schema_info=schema_str
         )
         return result
